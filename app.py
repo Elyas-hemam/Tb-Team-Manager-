@@ -1,4 +1,4 @@
-               import streamlit as st
+import streamlit as st
 import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -217,4 +217,4 @@ elif menu == "Admin-Bereich":
             else:
                 p_select = st.selectbox("Wähle einen Spieler:", list(st.session_state.players.keys()), key="scorer_sel")
                 current_goals = st.number_input("Tore insgesamt", value=st.session_state.players[p_select]["goals"], step=1)
- 
+
