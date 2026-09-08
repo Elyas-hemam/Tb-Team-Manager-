@@ -1,11 +1,15 @@
-import streamlit as st
+               import streamlit as st
 import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# --- Seiteneinstellungen ---
-st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon="⚽")
+# --- Seiteneinstellungen mit deinem neuen Logo ---
+try:
+    logo_image = Image.open("Screenshot_20260908_025914_Google.jpg")
+    st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon=logo_image)
+except:
+    st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon="⚽")
 
 # --- Daten-Speicher (Session State) ---
 if "players" not in st.session_state:
@@ -13,22 +17,17 @@ if "players" not in st.session_state:
 if "matches" not in st.session_state:
     st.session_state.matches = []
 
-# --- NEU: Positionsabhängige Rating-Berechnung ---
+# --- Positionsabhängige Rating-Berechnung ---
 def calculate_positional_rating(pos, pac, sho, pas, dri, def_stat, phy):
     if pos in ["ST", "LF", "RF"]:
-        # Fokus auf Angriff
         return (sho * 0.40) + (pac * 0.30) + (dri * 0.15) + (pas * 0.10) + (phy * 0.05)
     elif pos in ["ZM", "ZOM", "ZDM", "LM", "RM"]:
-        # Fokus auf Spielaufbau
         return (pas * 0.40) + (dri * 0.30) + (pac * 0.10) + (def_stat * 0.10) + (phy * 0.10)
     elif pos in ["IV", "LV", "RV"]:
-        # Fokus auf Defensive
         return (def_stat * 0.50) + (phy * 0.30) + (pac * 0.10) + (pas * 0.10)
     elif pos == "TW":
-        # Torwart-Spezialgewichtung
         return (def_stat * 0.50) + (phy * 0.30) + (pas * 0.20)
     else:
-        # Standard-Durchschnitt als Fallback
         return np.mean([pac, sho, pas, dri, def_stat, phy])
 
 # --- Hilfsfunktion: FUT-Karte zeichnen ---
@@ -37,8 +36,8 @@ def generate_fut_card(name, rating, pos, pac, sho, pas, dri, def_stat, phy, imag
     draw = ImageDraw.Draw(card)
     
     # Goldener/Violetter Rahmen (FUT-Design)
-    draw.rectangle([10, 10, 390, 590], outline="#d4af37", width=5)
-    draw.rectangle([15, 15, 385, 585], outline="#ff007f", width=2)
+    draw.rectangle([(10, 10), (390, 590)], outline="#d4af37", width=5)
+    draw.rectangle([(15, 15), (385, 585)], outline="#ff007f", width=2)
     
     # Spielerbild einfügen falls vorhanden, sonst Platzhalter
     if image_file:
@@ -46,9 +45,9 @@ def generate_fut_card(name, rating, pos, pac, sho, pas, dri, def_stat, phy, imag
             p_img = Image.open(image_file).resize((180, 220))
             card.paste(p_img, (180, 80))
         except:
-            draw.rectangle([180, 80, 360, 300], fill="#3a1c63")
+            draw.rectangle([(180, 80), (360, 300)], fill="#3a1c63")
     else:
-        draw.rectangle([180, 80, 360, 300], fill="#3a1c63")
+        draw.rectangle([(180, 80), (360, 300)], fill="#3a1c63")
         
     # Texte (Rating, Name, Stats)
     draw.text((40, 70), f"{int(rating)}", fill="#d4af37", font_size=55)
@@ -95,7 +94,7 @@ if menu == "Team-Übersicht & Karten":
         
         p = st.session_state.players[selected_player]
         
-        col1, col2 = st.columns([1, 2])
+        col1, col2 = st.columns(2)
         with col1:
             card_img = generate_fut_card(
                 selected_player, p["rating"], p["main_pos"],
@@ -200,7 +199,6 @@ elif menu == "Admin-Bereich":
                 
                 submit = st.form_submit_button("Spieler im Team speichern")
                 if submit and p_name:
-                    # Nutzt das neue positionsabhängige Berechnungssystem
                     ovr_rating = calculate_positional_rating(m_pos, p_pac, p_sho, p_pas, p_dri, p_def, p_phy)
                     
                     st.session_state.players[p_name] = {
@@ -210,7 +208,7 @@ elif menu == "Admin-Bereich":
                         "rating": ovr_rating, "goals": 0, "assists": 0,
                         "img_data": p_img
                     }
-                    st.success(f"Spieler {p_name} wurde erfolgreich als {m_pos} mit einem OVR-Rating von {int(ovr_rating)} angelegt!")
+                    st.success(f"Spieler {p_name} wurde erfolgreich angelegt!")
                     
         with tab2:
             st.subheader("⚽ Tore & Assists aktualisieren")
@@ -218,3 +216,5 @@ elif menu == "Admin-Bereich":
                 st.write("Keine Spieler vorhanden.")
             else:
                 p_select = st.selectbox("Wähle einen Spieler:", list(st.session_state.players.keys()), key="scorer_sel")
+                current_goals = st.number_input("Tore insgesamt", value=st.session_state.players[p_select]["goals"], step=1)
+ 
