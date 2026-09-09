@@ -3,11 +3,15 @@ import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import io
+import os
 
-# --- Seiteneinstellungen mit deinem neuen Logo ---
+# --- Seiteneinstellungen mit deinem Logo ---
 try:
-    logo_image = Image.open("Screenshot_20260908_025914_Google.jpg")
-    st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon=logo_image)
+    if os.path.exists("Screenshot_20260908_025914_Google.jpg"):
+        logo_image = Image.open("Screenshot_20260908_025914_Google.jpg")
+        st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon=logo_image)
+    else:
+        st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon="⚽")
 except:
     st.set_page_config(page_title="Team Manager & Card Creator", layout="wide", page_icon="⚽")
 
@@ -30,43 +34,51 @@ def calculate_positional_rating(pos, pac, sho, pas, dri, def_stat, phy):
     else:
         return np.mean([pac, sho, pas, dri, def_stat, phy])
 
-# --- Hilfsfunktion: FUT-Karte zeichnen ---
+# --- HILFSFUNKTION: ECHTE FUT-KARTE ZEICHNEN ---
 def generate_fut_card(name, rating, pos, pac, sho, pas, dri, def_stat, phy, image_file=None):
-    card = Image.new("RGB", (400, 600), "#1e0b36") # Dunkelvioletter Hintergrund
+    # Erzwinge das Laden der card_template.png aus deinem GitHub-Ordner
+    try:
+        card = Image.open("card_template.png").convert("RGBA")
+        card = card.resize((450, 650)) # Perfekt gestreckt für mobile Bildschirme
+    except Exception as e:
+        # Fallback falls es absolut gar nicht geht
+        card = Image.new("RGBA", (450, 650), "#1e0b36")
+        draw = ImageDraw.Draw(card)
+        draw.rectangle([(10, 10), (440, 640)], outline="#d4af37", width=5)
+        
     draw = ImageDraw.Draw(card)
     
-    # Goldener/Violetter Rahmen (FUT-Design)
-    draw.rectangle([(10, 10), (390, 590)], outline="#d4af37", width=5)
-    draw.rectangle([(15, 15), (385, 585)], outline="#ff007f", width=2)
-    
-    # Spielerbild einfügen falls vorhanden, sonst Platzhalter
+    # Spielerbild einfügen falls hochgeladen
     if image_file:
         try:
-            p_img = Image.open(image_file).resize((180, 220))
-            card.paste(p_img, (180, 80))
+            p_img = Image.open(image_file).convert("RGBA").resize((180, 200))
+            # Positioniert das Gesicht im oberen rechten Bereich der Neymar-Karte
+            card.paste(p_img, (190, 120), p_img if p_img.mode == 'RGBA' else None)
         except:
-            draw.rectangle([(180, 80), (360, 300)], fill="#3a1c63")
-    else:
-        draw.rectangle([(180, 80), (360, 300)], fill="#3a1c63")
+            pass
         
-    # Texte (Rating, Name, Stats)
-    draw.text((40, 70), f"{int(rating)}", fill="#d4af37", font_size=55)
-    draw.text((40, 140), pos, fill="#ffffff", font_size=28)
+    # Texte genau auf die Neymar-Karte angepasst (Farben und Positionen)
+    # 1. Große Gesamtnote oben links (In coolem Weiß/Goldschimmer)
+    draw.text((85, 125), f"{int(rating)}", fill="#ffffff", font_size=58, font_weight="bold")
     
-    draw.text((40, 320), name.upper(), fill="#ffffff", font_size=32)
-    draw.line([(40, 365), (360, 365)], fill="#d4af37", width=2)
+    # 2. Position direkt unter der Note
+    draw.text((85, 195), pos, fill="#a8ffda", font_size=26)
     
-    # Stats Spalte 1
-    draw.text((50, 390), f"{int(pac)} PAC", fill="#ffffff", font_size=22)
-    draw.text((50, 430), f"{int(sho)} SHO", fill="#ffffff", font_size=22)
-    draw.text((50, 470), f"{int(pas)} PAS", fill="#ffffff", font_size=22)
+    # 3. Spielername fett zentriert im unteren Drittel
+    draw.text((225, 375), name.upper(), fill="#ffffff", font_size=34, anchor="mm")
     
-    # Stats Spalte 2
-    draw.text((220, 390), f"{int(dri)} DRI", fill="#ffffff", font_size=22)
-    draw.text((220, 430), f"{int(def_stat)} DEF", fill="#ffffff", font_size=22)
-    draw.text((220, 470), f"{int(phy)} PHY", fill="#ffffff", font_size=22)
+    # 4. Die 6 Stats-Zahlen (Genau über den Symbolen der Karte platziert)
+    # Reihe 1: PAC, SHO, PAS
+    draw.text((95, 465), f"{int(pac)}", fill="#ffffff", font_size=28, anchor="mm")
+    draw.text((165, 465), f"{int(sho)}", fill="#ffffff", font_size=28, anchor="mm")
+    draw.text((235, 465), f"{int(pas)}", fill="#ffffff", font_size=28, anchor="mm")
     
-    return card
+    # Reihe 2: DRI, DEF, PHY
+    draw.text((305, 465), f"{int(dri)}", fill="#ffffff", font_size=28, anchor="mm")
+    draw.text((375, 465), f"{int(def_stat)}", fill="#ffffff", font_size=28, anchor="mm")
+    draw.text((445, 465), f"{int(phy)}", fill="#ffffff", font_size=28, anchor="mm")
+    
+    return card.convert("RGB")
 
 # --- Navigation ---
 st.title("🏆 Dein Club - Ultimate Team Manager")
@@ -77,7 +89,7 @@ is_admin = st.sidebar.checkbox("Als Admin anmelden")
 admin_authenticated = False
 if is_admin:
     password = st.sidebar.text_input("Admin-Passwort", type="password")
-    if password == "admin123": # Hier dein Wunschpasswort eintragen
+    if password == "admin123":
         admin_authenticated = True
         st.sidebar.success("🔑 Admin-Modus aktiv!")
     else:
@@ -94,7 +106,7 @@ if menu == "Team-Übersicht & Karten":
         
         p = st.session_state.players[selected_player]
         
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns([1, 1])
         with col1:
             card_img = generate_fut_card(
                 selected_player, p["rating"], p["main_pos"],
@@ -205,15 +217,3 @@ elif menu == "Admin-Bereich":
                         "main_pos": m_pos, "sub_pos": s_pos,
                         "pac": p_pac, "sho": p_sho, "pas": p_pas,
                         "dri": p_dri, "def": p_def, "phy": p_phy,
-                        "rating": ovr_rating, "goals": 0, "assists": 0,
-                        "img_data": p_img
-                    }
-                    st.success(f"Spieler {p_name} wurde erfolgreich angelegt!")
-                    
-        with tab2:
-            st.subheader("⚽ Tore & Assists aktualisieren")
-            if not st.session_state.players:
-                st.write("Keine Spieler vorhanden.")
-            else:
-                p_select = st.selectbox("Wähle einen Spieler:", list(st.session_state.players.keys()), key="scorer_sel")
-                current_goals = st.number_input("Tore insgesamt", value=st.session_state.players[p_select]["goals"], step=1)
